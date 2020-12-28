@@ -1,6 +1,11 @@
-{ "packs": ["HelloWorldPremium",
-            "IAM",
-            "IdentityLifecycleManagement-Enterprise",
-            "IdentityLifecycleManagement-LargeEnterprise",
-            "PassiveTotalPremium",
-            "RiskIQDigitalFootprintPremium"] }
+{
+  "description": "List of mandatory premium packs to be found in the index.json file",
+  "packs": [
+    "HelloWorldPremium",
+    "IAM",
+    "IdentityLifecycleManagement-Enterprise",
+    "IdentityLifecycleManagement-LargeEnterprise",
+    "PassiveTotalPremium",
+    "RiskIQDigitalFootprintPremium"
+  ]
+}
