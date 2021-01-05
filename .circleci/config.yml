@@ -433,11 +433,16 @@ references:
     - Create Instances:
         context: bucket_upload_env
         requires:
-          - Setup Environment
-    - Upload Packs To Marketplace:
+          - Run Unit Testing And Lint
+          - Run Validations
+    - Install Packs in Server 6_0:
         context: bucket_upload_env
         requires:
-           - Create Instances
+          - Create Instances
+    - Install Packs in Server Master:
+        context: bucket_upload_env
+        requires:
+          - Create Instances
 
   check_user_permissions_to_upload_packs: &check_user_permissions_to_upload_packs
     when:
