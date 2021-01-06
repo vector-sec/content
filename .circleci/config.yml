@@ -433,8 +433,7 @@ references:
     - Create Instances:
         context: bucket_upload_env
         requires:
-          - Run Unit Testing And Lint
-          - Run Validations
+          - Setup Environment
     - Install Packs in Server 6_0:
         context: bucket_upload_env
         requires:
