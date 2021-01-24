@@ -181,6 +181,7 @@ def main():
     base_url = f"{params.get('url')}/1.0/"
     api_key = params.get('api_key')
     verify = not params.get('insecure', False)
+
     proxy = params.get('proxy', False)
     command = demisto.command()
 
