@@ -86,15 +86,16 @@ class SimpleSSH(SSHClient):
 
 class Server:
 
-    def __init__(self, host, user_name, password):
+    def __init__(self, internal_ip, port, user_name, password):
         self.__ssh_client = None
         self.__client = None
-        self.host = host
+        self.internal_ip = internal_ip
+        self.ssh_tunnel_port = port
         self.user_name = user_name
         self.password = password
 
     def __str__(self):
-        return self.host
+        return self.internal_ip
 
     @property
     def client(self):
@@ -104,7 +105,9 @@ class Server:
         return self.__client
 
     def reconnect_client(self):
-        self.__client = demisto_client.configure(self.host, verify_ssl=False, username=self.user_name,
+        self.__client = demisto_client.configure(f'https://localhost:{self.ssh_tunnel_port}',
+                                                 verify_ssl=False,
+                                                 username=self.user_name,
                                                  password=self.password)
         return self.__client
 
@@ -152,11 +155,14 @@ class Build:
         self.ci_build_number = options.build_number
         self.is_nightly = options.is_nightly
         self.ami_env = options.ami_env
-        self.servers, self.server_numeric_version = self.get_servers(options.ami_env)
+        self.server_to_port_mapping, self.server_numeric_version = self.get_servers(options.ami_env)
         self.secret_conf = get_json_file(options.secret)
         self.username = options.user if options.user else self.secret_conf.get('username')
         self.password = options.password if options.password else self.secret_conf.get('userPassword')
-        self.servers = [Server(server_url, self.username, self.password) for server_url in self.servers]
+        self.servers = [Server(internal_ip,
+                               port,
+                               self.username,
+                               self.password) for internal_ip, port in self.server_to_port_mapping.items()]
         self.is_private = options.is_private
         conf = get_json_file(options.conf)
         self.tests = conf['tests']
@@ -178,7 +184,7 @@ class Build:
             The single proxy instance that should be used in this build.
         """
         if not self._proxy:
-            self._proxy = MITMProxy(self.servers[0].host.replace('https://', ''),
+            self._proxy = MITMProxy(self.servers[0].internal_ip,
                                     logging_module=logging,
                                     build_number=self.ci_build_number,
                                     branch_name=self.branch_name)
@@ -219,12 +225,12 @@ class Build:
     @staticmethod
     def get_servers(ami_env):
         env_conf = get_env_conf()
-        servers = determine_servers_urls(env_conf, ami_env)
+        server_to_port_mapping = map_server_to_port(env_conf, ami_env)
         if Build.run_environment == Running.CIRCLECI_RUN:
             server_numeric_version = get_server_numeric_version(ami_env)
         else:
             server_numeric_version = Build.DEFAULT_SERVER_VERSION
-        return servers, server_numeric_version
+        return server_to_port_mapping, server_numeric_version
 
 
 def options_handler():
@@ -867,25 +873,20 @@ def get_env_conf():
     #  END CHANGE ON LOCAL RUN  #
 
 
-def determine_servers_urls(env_results, ami_env):
+def map_server_to_port(env_results, instance_role):
     """
     Arguments:
         env_results: (dict)
             env_results.json in server
-        ami_env: (str)
+        instance_role: (str)
             The amazon machine image environment whose IP we should connect to.
 
     Returns:
         (lst): The server url list to connect to
     """
 
-    instances_dns = [env.get('InstanceDNS') for env in env_results if ami_env in env.get('Role', '')]
-
-    server_urls = []
-    for dns in instances_dns:
-        server_url = dns if not dns or dns.startswith('http') else f'https://{dns}'
-        server_urls.append(server_url)
-    return server_urls
+    ip_to_port_map = {env.get('InstanceDNS'): env.get('TunnelPort') for env in env_results if instance_role in env.get('Role', '')}
+    return ip_to_port_map
 
 
 def get_json_file(path):
